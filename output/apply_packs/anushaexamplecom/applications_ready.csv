@@ -1,0 +1,3 @@
+rank,score,decision,company,job_title,location,apply_url,source,url_policy,url_reason,reasons,matched_keywords,missing_keywords
+1,57.5,weak_fit,AI Innovations LLC,Data Scientist,"New York, NY",https://linkedin.com/jobs/23456,,manual_review,unknown_domain,"Strong location alignment: 100%; Strong seniority alignment: 100%; Matched skills: data, python, sql",data; python; sql,datascience; machinelearning; ml; pytorch; scientist; statistics
+2,45.83,weak_fit,WebDesign Co,Frontend Developer,Remote,https://greenhouse.io/jobs/34567,,allowed,known_ats,Strong location alignment: 100%; Strong seniority alignment: 100%; Matched skills: developer,developer,css; frontend; react; restapis; typescript

@@ -1,0 +1,3 @@
+job_fingerprint,rank,score,decision,company,job_title,location,apply_url,source,status,notes,matched_keywords,missing_keywords
+12e43db6562db41f1c57794d1d96c6e96a4cc78c83a831983c7736943b976713,1,57.5,weak_fit,AI Innovations LLC,Data Scientist,"New York, NY",https://linkedin.com/jobs/23456,,queued,,data; python; sql,datascience; machinelearning; ml; pytorch; scientist; statistics
+3aa4c6967407648fa38ecfa6d2a459ffa440145c85fef01efc29a94c6f8f5a92,2,45.83,weak_fit,WebDesign Co,Frontend Developer,Remote,https://greenhouse.io/jobs/34567,,queued,,developer,css; frontend; react; restapis; typescript

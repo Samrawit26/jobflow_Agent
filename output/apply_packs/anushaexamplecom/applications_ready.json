@@ -1,0 +1,105 @@
+{
+  "applications": [
+    {
+      "apply_url": "https://linkedin.com/jobs/23456",
+      "company": "AI Innovations LLC",
+      "decision": "weak_fit",
+      "job_fingerprint": "12e43db6562db41f1c57794d1d96c6e96a4cc78c83a831983c7736943b976713",
+      "job_title": "Data Scientist",
+      "location": "New York, NY",
+      "matched_keywords": [
+        "data",
+        "python",
+        "sql"
+      ],
+      "missing_keywords": [
+        "datascience",
+        "machinelearning",
+        "ml",
+        "pytorch",
+        "scientist",
+        "statistics"
+      ],
+      "notes": "",
+      "rank": 1,
+      "reasons": [
+        "Strong location alignment: 100%",
+        "Strong seniority alignment: 100%",
+        "Matched skills: data, python, sql"
+      ],
+      "score": 57.5,
+      "source": "",
+      "url_domain": "linkedin.com",
+      "url_policy": "manual_review",
+      "url_reason": "unknown_domain",
+      "url_valid": true
+    },
+    {
+      "apply_url": "https://greenhouse.io/jobs/34567",
+      "company": "WebDesign Co",
+      "decision": "weak_fit",
+      "job_fingerprint": "3aa4c6967407648fa38ecfa6d2a459ffa440145c85fef01efc29a94c6f8f5a92",
+      "job_title": "Frontend Developer",
+      "location": "Remote",
+      "matched_keywords": [
+        "developer"
+      ],
+      "missing_keywords": [
+        "css",
+        "frontend",
+        "react",
+        "restapis",
+        "typescript"
+      ],
+      "notes": "",
+      "rank": 2,
+      "reasons": [
+        "Strong location alignment: 100%",
+        "Strong seniority alignment: 100%",
+        "Matched skills: developer"
+      ],
+      "score": 45.83,
+      "source": "",
+      "url_domain": "greenhouse.io",
+      "url_policy": "allowed",
+      "url_reason": "known_ats",
+      "url_valid": true
+    }
+  ],
+  "candidate": {
+    "desired_titles": [
+      "Power BI Developer",
+      "Data Analyst"
+    ],
+    "email": "anusha@example.com",
+    "location": "Remote",
+    "name": "Anusha Kayam",
+    "phone": "",
+    "skills": [
+      "Power BI",
+      "SQL",
+      "DAX",
+      "Excel",
+      "Azure",
+      "scrum",
+      "etl",
+      "bi",
+      "ssis",
+      "analytics"
+    ]
+  },
+  "checklist": {
+    "has_email": true,
+    "has_phone": false,
+    "has_resume": false,
+    "needs_manual_review": true,
+    "sponsorship_needed": null,
+    "work_authorization": ""
+  },
+  "top_n": 2,
+  "url_review_summary": {
+    "allowed": 1,
+    "blocked": 0,
+    "manual_review": 1
+  }
+}
