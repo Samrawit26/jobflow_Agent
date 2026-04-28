@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from jobflow.app.core.database import get_db
 from jobflow.resume.parser import parse_resume
 from jobflow.app.models.candidate import Candidate
+from execution.parse_resume_data import parse_resume_data
 
 app = FastAPI(title="JobFlow AI Career Engine")
 
@@ -16,36 +17,32 @@ def health():
     return {"status": "ok"}
 
 
-KNOWN_SKILLS = [
-    "python", "sql", "fastapi", "machine learning",
-    "aws", "docker", "java", "javascript",
-]
-
-
 @app.post("/upload-resume/")
 async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    print("🔥 UPLOAD ENDPOINT HIT")
     content = await file.read()
-    resume_text = content.decode("utf-8", errors="ignore")
 
-    text_lower = resume_text.lower()
-    skills = [skill for skill in KNOWN_SKILLS if skill in text_lower]
+    parsed = parse_resume_data(content, file.filename or "resume.txt")
 
-    candidate = Candidate(
-        name="Unknown",
-        email="unknown@example.com",
-        skills=skills,
-        experience_years=0,
-        resume_text=resume_text,
+    print("TEXT:", parsed["resume_text"][:500])
+    print("SKILLS FOUND:", parsed["skills"])
+
+    new_candidate = Candidate(
+        name=parsed["name"] or "Unknown",
+        email=parsed["email"] or "unknown@example.com",
+        skills=parsed["skills"],
+        experience_years=parsed["experience_years"],
+        resume_text=parsed["resume_text"],
     )
 
-    db.add(candidate)
+    db.add(new_candidate)
     db.commit()
-    db.refresh(candidate)
+    db.refresh(new_candidate)
 
     return {
         "message": "Resume uploaded successfully",
-        "candidate_id": candidate.id,
-        "skills": skills,
+        "candidate_id": new_candidate.id,
+        "skills": parsed["skills"],
     }
 
 
