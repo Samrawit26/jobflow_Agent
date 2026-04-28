@@ -10,24 +10,81 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
-# Built-in skill keywords for deterministic extraction
-SKILL_KEYWORDS = {
-    "python", "java", "javascript", "typescript", "c++", "c#", "ruby", "go", "rust",
+# Canonical skill names — these are the values returned by extract_skills_from_text().
+# Rules: min 3 chars (see _SHORT_WHITELIST for exceptions), no formatting variants
+# (e.g. "powerbi" is NOT here — it lives in SKILL_SYNONYMS and maps to "power bi").
+SKILL_KEYWORDS: set[str] = {
+    # Languages
+    "python", "java", "javascript", "typescript", "c++", "c#", "ruby", "rust",
+    "scala", "kotlin", "swift", "php", "golang",
+    # Databases
     "sql", "nosql", "postgresql", "mysql", "mongodb", "redis", "cassandra",
-    "aws", "azure", "gcp", "cloud", "docker", "kubernetes", "terraform",
-    "power bi", "powerbi", "tableau", "looker", "qlik", "excel", "vba",
-    "spark", "hadoop", "kafka", "airflow", "dbt", "snowflake", "redshift", "bigquery",
-    "etl", "elt", "data warehouse", "data lake", "data pipeline",
-    "fastapi", "django", "flask", "spring", "react", "angular", "vue", "node.js", "nodejs",
+    "sqlite", "oracle", "dynamodb",
+    # Cloud & infra
+    "aws", "azure", "gcp", "docker", "kubernetes", "terraform", "ansible",
+    # BI & visualisation
+    "power bi", "tableau", "looker", "qlik", "excel", "vba",
+    "power query", "ssrs", "ssis", "ssas", "dax", "mdx",
+    # Data engineering
+    "spark", "hadoop", "kafka", "airflow", "dbt", "snowflake", "redshift",
+    "bigquery", "etl", "elt", "data warehouse", "data lake", "data pipeline",
+    # Frameworks & libraries
+    "fastapi", "django", "flask", "spring", "react", "angular", "vue",
+    "node.js", "bootstrap", "tailwind", "sass",
+    # ML / AI
     "pandas", "numpy", "scikit-learn", "tensorflow", "pytorch", "keras",
+    "machine learning", "deep learning", "nlp", "computer vision",
+    # DevOps & tooling
     "git", "github", "gitlab", "bitbucket", "jira", "confluence",
-    "rest api", "graphql", "microservices", "api", "ci/cd", "devops",
-    "machine learning", "ml", "ai", "deep learning", "nlp", "computer vision",
-    "data science", "data analysis", "analytics", "bi", "business intelligence",
+    "graphql", "microservices", "rest api", "api", "devops", "linux", "unix",
+    "bash", "powershell", "ci/cd",
+    # Methodologies
     "agile", "scrum", "kanban", "sdlc", "tdd", "bdd",
-    "html", "css", "sass", "less", "bootstrap", "tailwind",
-    "linux", "unix", "bash", "shell", "powershell",
-    "dax", "mdx", "ssrs", "ssis", "ssas", "power query",
+    # Domains
+    "data science", "business intelligence",
+}
+
+# 2-char terms that are unambiguous technical skills (exempt from the 3-char minimum).
+_SHORT_WHITELIST: set[str] = {"go", "r"}  # Go lang, R lang
+
+# Aliases and formatting variants that map to a canonical SKILL_KEYWORDS entry.
+# When an alias is found in text the canonical skill is added to results.
+# Keeps output normalized: "PowerBI" and "power-bi" both resolve to "power bi".
+SKILL_SYNONYMS: dict[str, list[str]] = {
+    "power bi":          ["powerbi", "power-bi"],
+    "node.js":           ["nodejs", "node js"],
+    "sql":               ["structured query language", "t-sql", "tsql", "pl/sql", "plsql"],
+    "kubernetes":        ["k8s"],
+    "javascript":        ["js"],
+    "ci/cd":             ["continuous integration", "continuous deployment",
+                          "continuous delivery", "continuous integration/continuous deployment"],
+    "etl":               ["extract transform load", "extract, transform, load"],
+    "machine learning":  ["predictive modeling", "predictive modelling", "ml algorithms"],
+    "python":            ["python3", "python 3"],
+    "tableau":           ["tableau desktop", "tableau server"],
+    "rest api":          ["restful api", "rest apis", "restful apis"],
+}
+
+# Precomputed reverse lookup: alias (lowercased) → canonical skill.
+_SYNONYM_LOOKUP: dict[str, str] = {
+    alias.lower(): canonical
+    for canonical, aliases in SKILL_SYNONYMS.items()
+    for alias in aliases
+}
+
+# Context phrases that imply specific skills when the skill wasn't matched directly.
+# Each key is a phrase that strongly signals a particular tool domain.
+# Conservative: phrases are specific enough to avoid false positives
+# (e.g. "data visualization" alone is NOT here because it's used for matplotlib/D3 too).
+CONTEXT_INFERENCE: dict[str, list[str]] = {
+    "power bi dashboard":       ["power bi"],
+    "power bi report":          ["power bi"],
+    "tableau dashboard":        ["tableau"],
+    "tableau workbook":         ["tableau"],
+    "ssrs report":              ["ssrs"],
+    "bi reporting":             ["power bi", "ssrs"],
+    "business intelligence reporting": ["power bi", "ssrs"],
+    "data visualization tools": ["power bi", "tableau"],
 }
 
 
@@ -130,61 +187,68 @@ def _extract_text_from_docx(path: str) -> str:
         raise ValueError(f"Cannot parse .docx XML: {path}")
 
 
+def _normalize_text(text: str) -> str:
+    """Lowercase and collapse all whitespace to a single space."""
+    return re.sub(r"\s+", " ", text.lower()).strip()
+
+
 def extract_skills_from_text(text: str) -> list[str]:
     """
-    Extract skills from text using deterministic keyword matching.
+    Extract skills from resume text using three-step intelligent matching.
 
-    Uses built-in SKILL_KEYWORDS set plus pattern matching for:
-    - Technical acronyms (2-5 uppercase letters)
-    - Capitalized tech terms
+    Step 1 — Keyword match:
+        Whole-word (word-boundary) scan against SKILL_KEYWORDS and _SHORT_WHITELIST.
+        Returns only canonical skill names.
+
+    Step 2 — Synonym match:
+        Scans SKILL_SYNONYMS aliases. If an alias is found and the canonical
+        skill is not yet in results, adds the canonical form.
+        Example: "PowerBI" → adds "power bi".
+
+    Step 3 — Context inference:
+        Matches CONTEXT_INFERENCE phrases. Only specific multi-word phrases
+        trigger inference to prevent false positives.
+        Example: "power bi dashboard" → adds "power bi" if not already found.
+
+    All matching is case-insensitive with normalised whitespace.
+    No acronym or CamelCase scanning (those produce noise — names, locations).
 
     Args:
-        text: Resume or description text
+        text: Resume or job description text.
 
     Returns:
-        List of extracted skills (lowercase, deduplicated, stable order)
+        List of canonical skill strings (lowercase, deduplicated, stable order).
     """
     if not text:
         return []
 
-    text_lower = text.lower()
-    found_skills = []
-    seen = set()
+    normalized = _normalize_text(text)
+    found_skills: list[str] = []
+    seen: set[str] = set()
 
-    # 1. Match known skill keywords (case-insensitive, whole words)
-    for skill in SKILL_KEYWORDS:
-        # Use word boundaries for single-word skills
-        if " " not in skill:
-            pattern = rf"\b{re.escape(skill)}\b"
-        else:
-            # Multi-word skills need more careful matching
-            pattern = re.escape(skill)
+    def _add(skill: str) -> None:
+        if skill not in seen:
+            found_skills.append(skill)
+            seen.add(skill)
 
-        if re.search(pattern, text_lower):
-            if skill not in seen:
-                found_skills.append(skill)
-                seen.add(skill)
-
-    # 2. Extract acronyms (2-5 uppercase letters)
-    acronyms = re.findall(r"\b[A-Z]{2,5}\b", text)
-    for acronym in acronyms:
-        acronym_lower = acronym.lower()
-        if acronym_lower not in seen:
-            found_skills.append(acronym_lower)
-            seen.add(acronym_lower)
-
-    # 3. Extract capitalized tech terms (CamelCase or standalone)
-    # Match words like "PowerBI", "Node.js", "C#", etc.
-    tech_terms = re.findall(r"\b[A-Z][a-z]*(?:[A-Z][a-z]*)*(?:[.#][a-z]+)?\b", text)
-    for term in tech_terms:
-        # Skip common words
-        if term.lower() in {"the", "a", "an", "and", "or", "but", "in", "on", "at"}:
+    # ── Step 1: curated keyword scan ────────────────────────────────────────
+    all_keywords = SKILL_KEYWORDS | _SHORT_WHITELIST
+    for skill in sorted(all_keywords):
+        if len(skill) < 3 and skill not in _SHORT_WHITELIST:
             continue
-        # Only include if 2+ chars
-        if len(term) >= 2:
-            term_lower = term.lower()
-            if term_lower not in seen:
-                found_skills.append(term_lower)
-                seen.add(term_lower)
+        if re.search(rf"\b{re.escape(skill)}\b", normalized):
+            _add(skill)
+
+    # ── Step 2: synonym / alias scan ────────────────────────────────────────
+    for alias, canonical in sorted(_SYNONYM_LOOKUP.items()):
+        if canonical not in seen:
+            if re.search(rf"\b{re.escape(alias)}\b", normalized):
+                _add(canonical)
+
+    # ── Step 3: context inference ────────────────────────────────────────────
+    for phrase, inferred in CONTEXT_INFERENCE.items():
+        if re.search(rf"\b{re.escape(phrase)}\b", normalized):
+            for skill in inferred:
+                _add(skill)
 
     return found_skills

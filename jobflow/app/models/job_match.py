@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, Float, ForeignKey
+from sqlalchemy import Column, Integer, Text, Float, ForeignKey, ARRAY
 from jobflow.app.core.database import Base
 
 
@@ -9,4 +9,7 @@ class JobMatch(Base):
     candidate_id = Column(Integer, ForeignKey("candidates.id"))
     job_title = Column(Text)
     company = Column(Text)
+    job_description = Column(Text)
     match_score = Column(Float)
+    required_matches = Column(ARRAY(Text))
+    optional_matches = Column(ARRAY(Text))

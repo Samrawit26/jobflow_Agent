@@ -100,8 +100,7 @@ def test_parse_resume_data_extracts_skills():
     skills = result["skills"]
     assert isinstance(skills, list)
     assert len(skills) > 0
-    skills_lower = [s.lower() for s in skills]
-    assert any("sql" in s for s in skills_lower)
+    assert "sql" in skills
 
 
 def test_parse_resume_data_experience_years_is_int():

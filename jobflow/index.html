@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>JobFlow UI</title>
+</head>
+<body>
+
+  <h2>Job Application</h2>
+
+  <!-- Upload -->
+  <h3>Step 1: Upload Resume</h3>
+  <input type="file" id="fileInput" />
+  <button onclick="uploadResume()">Upload</button>
+
+  <p id="error" style="color:red;"></p>
+
+  <!-- Info -->
+  <h3>Step 2: Your Information</h3>
+  <p>Name: <span id="name">—</span></p>
+  <p>Email: <span id="email">—</span></p>
+  <p>Skills: <span id="skills">—</span></p>
+
+  <!-- Apply -->
+  <h3>Step 3: Apply</h3>
+  <button onclick="apply()">Apply</button>
+
+  <p id="success" style="color:green;"></p>
+
+  <!-- Jobs -->
+  <h3>Matched Jobs</h3>
+  <div id="jobs"></div>
+
+<script>
+let candidateData = {};
+
+async function uploadResume() {
+  const fileInput = document.getElementById("fileInput");
+  const file = fileInput.files[0];
+
+  const errorBox = document.getElementById("error");
+  const nameBox = document.getElementById("name");
+  const emailBox = document.getElementById("email");
+  const skillsBox = document.getElementById("skills");
+  const jobsBox = document.getElementById("jobs");
+
+  errorBox.innerText = "";
+  jobsBox.innerHTML = "Loading...";
+
+  if (!file) {
+    errorBox.innerText = "Please select a file";
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const response = await fetch("http://127.0.0.1:9000/upload-resume/", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json();
+    console.log("API RESPONSE:", data);
+
+    if (!response.ok) {
+      errorBox.innerText = data.detail || "Upload failed";
+      jobsBox.innerHTML = "";
+      return;
+    }
+
+    candidateData = data;
+
+    nameBox.innerText = data.name || "N/A";
+    emailBox.innerText = data.email || "N/A";
+    skillsBox.innerText = (data.skills || []).join(", ");
+
+    jobsBox.innerHTML = "";
+
+    if (data.ranked_jobs && data.ranked_jobs.length > 0) {
+      data.ranked_jobs.forEach(job => {
+        const div = document.createElement("div");
+        div.style.border = "1px solid #ddd";
+        div.style.padding = "10px";
+        div.style.margin = "5px 0";
+
+        div.innerHTML = `
+          <b>${job.job_title}</b><br>
+          Score: ${job.score}<br>
+          <small>${job.reason}</small>
+        `;
+
+        jobsBox.appendChild(div);
+      });
+    } else {
+      jobsBox.innerHTML = "No matching jobs found";
+    }
+
+  } catch (err) {
+    console.error("Frontend Error:", err);
+    errorBox.innerText = "Cannot connect to server.";
+    jobsBox.innerHTML = "";
+  }
+}
+
+async function apply() {
+  const successBox = document.getElementById("success");
+  const errorBox = document.getElementById("error");
+
+  try {
+    const response = await fetch("http://127.0.0.1:9000/apply/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(candidateData)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Apply failed");
+    }
+
+    successBox.innerText = "Application submitted successfully!";
+    errorBox.innerText = "";
+
+  } catch (err) {
+    console.error(err);
+    errorBox.innerText = "Error applying";
+    successBox.innerText = "";
+  }
+}
+</script>
+
+</body>
+</html>

@@ -11,6 +11,7 @@ Importable and testable. No orchestration logic. No prompts.
 import io
 
 from jobflow.resume.parser import structure_resume_text
+from jobflow.app.core.resume_parser import extract_skills_from_text
 
 
 def extract_text_from_bytes(content: bytes, filename: str) -> str:
@@ -98,10 +99,13 @@ def parse_resume_data(content: bytes, filename: str) -> dict:
 
     structured = structure_resume_text(text)
 
+    # Use full-text keyword scan for skills — more reliable than section parsing
+    skills = extract_skills_from_text(text)
+
     return {
         "name": structured.get("name") or None,
         "email": structured.get("email") or None,
-        "skills": structured.get("skills") or [],
+        "skills": skills,
         "experience_years": int(structured.get("years_experience") or 0),
         "resume_text": text,
     }
